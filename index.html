@@ -3,101 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Repo Visualization</title>
+    <title>LinkedIn Articles Visualization</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; }
-        .bar { fill: steelblue; }
-        .bar:hover { fill: orange; }
+        .bar { transition: fill 0.3s ease-out; }
         .axis-label { font-size: 14px; font-weight: bold; }
-        .circle { fill: green; opacity: 0.7; }
-        .circle:hover { fill: red; }
         .tooltip {
             position: absolute;
             background-color: white;
             border: 1px solid black;
             padding: 5px;
             display: none;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <h2>GitHub Repositories Visualization</h2>
+    <h2>Top 10 LinkedIn Articles</h2>
     <div id="tooltip" class="tooltip"></div>
-    <svg id="bar-chart" width="800" height="500"></svg>
-    <svg id="bubble-chart" width="800" height="500"></svg>
+    <svg id="linkedin-chart" width="800" height="500"></svg>
     
     <script>
-        const username = "srinay2007";
-        const apiUrl = `https://api.github.com/users/${username}/repos`;
+        const articles = [
+            { title: "RAG based Text Analysis System for Pharma Research", views: 29 },
+            { title: "The Sacred Bond with Indian Cows: A Personal Experience", views: 54 },
+            { title: "A Devotional Journey", views: 92 },
+            { title: "Gratitude and Thanksgiving to pioneers of AI and Data Science", views: 12 },
+            { title: "When Going gets tough tough gets going", views: 26 },
+            { title: "Simplifying Upgrade of Large Data warehouse System", views: 32 },
+            { title: "Exploring the Essence of Pranayama: A short Guide to Powerful techniques.", views: 48 },
+            { title: "Navigating the Transition: From Traditional IT Skills to Machine Learning and AI Expertise", views: 95 },
+            { title: "Simplifying Analytic Solution for Businesses in Cloud Platform", views: 20 },
+            { title: "How Yoga can make difference at work place", views: 28 }
+        ];
         
-        d3.json(apiUrl).then(data => {
-            const repos = data.map(repo => ({ name: repo.name, stars: repo.stargazers_count, forks: repo.forks_count, description: repo.description || "No description available" }));
-            repos.sort((a, b) => b.stars - a.stars);
-            
-            const svg = d3.select("#bar-chart"),
-                  width = +svg.attr("width"),
-                  height = +svg.attr("height"),
-                  margin = { top: 40, right: 20, bottom: 100, left: 100 };
-            
-            const x = d3.scaleBand()
-                .domain(repos.map(d => d.name))
-                .range([margin.left, width - margin.right])
-                .padding(0.3);
-            
-            const y = d3.scaleLinear()
-                .domain([0, d3.max(repos, d => d.stars)])
-                .nice()
-                .range([height - margin.bottom, margin.top]);
-            
-            svg.append("g")
-                .attr("transform", `translate(0,${height - margin.bottom})`)
-                .call(d3.axisBottom(x))
-                .selectAll("text")
-                .attr("transform", "rotate(-45)")
-                .attr("text-anchor", "end");
-            
-            svg.append("g")
-                .attr("transform", `translate(${margin.left},0)`)
-                .call(d3.axisLeft(y));
-            
-            const tooltip = d3.select("#tooltip");
-            
-            svg.selectAll(".bar")
-                .data(repos)
-                .enter().append("rect")
-                .attr("class", "bar")
-                .attr("x", d => x(d.name))
-                .attr("y", d => y(d.stars))
-                .attr("height", d => height - margin.bottom - y(d.stars))
-                .attr("width", x.bandwidth())
-                .on("mouseover", (event, d) => {
-                    tooltip.style("display", "block").html(`<strong>${d.name}</strong><br>${d.description}`)
-                           .style("left", `${event.pageX + 10}px`)
-                           .style("top", `${event.pageY - 10}px`);
-                })
-                .on("mouseout", () => tooltip.style("display", "none"));
-            
-            // Bubble chart for forks
-            const bubbleSvg = d3.select("#bubble-chart");
-            const bubbleScale = d3.scaleLinear()
-                .domain([0, d3.max(repos, d => d.forks)])
-                .range([5, 50]);
-            
-            bubbleSvg.selectAll(".circle")
-                .data(repos)
-                .enter().append("circle")
-                .attr("class", "circle")
-                .attr("cx", (d, i) => (i + 1) * 60)
-                .attr("cy", height / 2)
-                .attr("r", d => bubbleScale(d.forks))
-                .on("mouseover", (event, d) => {
-                    tooltip.style("display", "block").html(`<strong>${d.name}</strong><br>${d.description}`)
-                           .style("left", `${event.pageX + 10}px`)
-                           .style("top", `${event.pageY - 10}px`);
-                })
-                .on("mouseout", () => tooltip.style("display", "none"));
-        });
+        const svg = d3.select("#linkedin-chart"),
+              width = +svg.attr("width"),
+              height = +svg.attr("height"),
+              margin = { top: 40, right: 20, bottom: 150, left: 100 };
+        
+        const x = d3.scaleBand()
+            .domain(articles.map(d => d.title))
+            .range([margin.left, width - margin.right])
+            .padding(0.3);
+        
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(articles, d => d.views)])
+            .nice()
+            .range([height - margin.bottom, margin.top]);
+        
+        const tooltip = d3.select("#tooltip");
+        
+        const colors = d3.scaleOrdinal(d3.schemeCategory10);
+        
+        svg.append("g")
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .attr("transform", "rotate(-45)")
+            .attr("text-anchor", "end")
+            .each(function(d) {
+                const text = d3.select(this);
+                const words = d.split(/\s+/);
+                let wrappedText = "";
+                let line = "";
+                
+                words.forEach(word => {
+                    if ((line + word).length > 35) {
+                        wrappedText += `\n${word}`;
+                        line = word;
+                    } else {
+                        line += ` ${word}`;
+                        wrappedText += ` ${word}`;
+                    }
+                });
+                text.text(wrappedText.trim()).attr("dy", "0.5em");
+            });
+        
+        svg.append("g")
+            .attr("transform", `translate(${margin.left},0)`)
+            .call(d3.axisLeft(y));
+        
+        svg.selectAll(".bar")
+            .data(articles)
+            .enter().append("rect")
+            .attr("class", "bar")
+            .attr("x", d => x(d.title))
+            .attr("y", height - margin.bottom)
+            .attr("height", 0)
+            .attr("width", x.bandwidth())
+            .attr("fill", (d, i) => colors(i))
+            .on("mouseover", (event, d) => {
+                tooltip.style("display", "block")
+                       .style("left", (event.pageX + 10) + "px")
+                       .style("top", (event.pageY - 20) + "px")
+                       .html(`<strong>${d.title}</strong><br>Views: ${d.views}`);
+            })
+            .on("mousemove", event => {
+                tooltip.style("left", (event.pageX + 10) + "px")
+                       .style("top", (event.pageY - 20) + "px");
+            })
+            .on("mouseout", () => tooltip.style("display", "none"))
+            .transition()
+            .duration(1000)
+            .attr("y", d => y(d.views))
+            .attr("height", d => height - margin.bottom - y(d.views));
     </script>
 </body>
 </html>
